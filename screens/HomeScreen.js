@@ -45,6 +45,7 @@ import { AsyncStorage } from "react-native";
 //   /* `accessToken` is now invalid and cannot be used to get data from the Google API with HTTP requests */
 // }
 export default function HomeScreen() {
+  const [image, onImageSrc] = React.useState(" ");
   const signInWithGoogleAsync = async () => {
     try {
       const result = await Google.logInAsync({
@@ -89,7 +90,7 @@ export default function HomeScreen() {
       // )
       .then(response => {
         if (response.status === 401) {
-          // refreshAccess();
+          refreshAccess();
         }
         return response.json();
       })
@@ -134,7 +135,6 @@ export default function HomeScreen() {
     }
   };
   const [value, onChangeText] = React.useState("Useless Placeholder");
-  const [image, onImageSrc] = React.useState(" ");
   // console.log(image.webContentLink.substring(0, 64));
   let Image_Http_URL = {
     uri:
