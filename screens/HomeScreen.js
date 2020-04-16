@@ -49,6 +49,7 @@ export default function HomeScreen() {
   const signInWithGoogleAsync = async () => {
     try {
       const result = await Google.logInAsync({
+        //clientId I created for this demo we will also need one for iOS and maybe web
         androidClientId:
           "316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com",
         scopes: [
@@ -65,6 +66,7 @@ export default function HomeScreen() {
         ]
       });
       if (result.type === "success") {
+        //store to local storage to make more api calls w/o forcing user to sign in again
         return await AsyncStorage.multiSet([
           ["@access_Token", result.accessToken],
           ["@refresh_Token", result.refreshToken]
@@ -79,7 +81,8 @@ export default function HomeScreen() {
 
   const getAPI = async () => {
     const accessToken = await AsyncStorage.getItem("@access_Token");
-    fetch(`https://photoslibrary.googleapis.com/v1/mediaItems`, {
+    // get one photo via pageSize query param
+    fetch(`https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=1`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     })
       // fetch(
@@ -88,14 +91,19 @@ export default function HomeScreen() {
       //     headers: { Authorization: `Bearer ${accessToken}` }
       //   }
       // )
+
+      // if the response comes back Unauthenticated refresh accessToken
       .then(response => {
         if (response.status === 401) {
           refreshAccess();
         }
         return response.json();
       })
-      .then(data => {
-        console.log(data);
+      // store nextPageToken to get next batch for image picker
+      .then(async data => {
+        await AsyncStorage.setItem("@next_Page_Token", data.nextPageToken);
+        // store only photos
+        onImageSrc(data.mediaItems.filter(value => value.mediaMetadata.photo));
       });
   };
 
@@ -119,27 +127,30 @@ export default function HomeScreen() {
       });
   };
 
-  const getData = async () => {
-    try {
-      const values = await AsyncStorage.multiGet(
-        ["@access_Token", "@refresh_Token"],
-        () => [["@access_Token"], ["@refresh_Token"]]
-      );
-      console.log(values);
-      const refresh = await AsyncStorage.getItem("@access_Token");
-      if (value !== null) {
-        Alert.alert(refresh);
+  const getNextBatch = async () => {
+    const accessToken = await AsyncStorage.getItem("@access_Token");
+    const nextPageToken = await AsyncStorage.getItem("@next_Page_Token");
+    // get one photo via pageSize query param -- this time get the next photo in the array
+    fetch(
+      `https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=1&pageToken=${nextPageToken}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` }
       }
-    } catch (e) {
-      // error reading value
-    }
+    )
+      .then(response => {
+        return response.json();
+      })
+      // store nextPageToken to get next batch for image picker
+      .then(async data => {
+        await AsyncStorage.setItem("@next_Page_Token", data.nextPageToken);
+        onImageSrc(data.mediaItems.filter(value => value.mediaMetadata.photo));
+      });
   };
   const [value, onChangeText] = React.useState("Useless Placeholder");
-  // console.log(image.webContentLink.substring(0, 64));
   let Image_Http_URL = {
-    uri:
-      "https://lh3.googleusercontent.com/lr/AGWb-e4cu0bCBTyJPgOLhKXxx_pfHfhqOfTm0NkfiSSDAaXdt9QzK_lOyrZNFpZ-TpiLj4TT2B_JUPjYf6qpyhu6jTjp9INRN7k44klhqF8FQC0NsXcBnuscJAv8Vr2XE1KPgC8aFNk5XPr5VotK0_qzerFgHaU3WxL6sg0bzJ9S4IFCW3vS0vggZwI9GYY-Jv-LTlkP6smT8J0L1sd09pPoRxfldMX_oyCkJJnLmihp0FKrCWU7oiosMU2rC-ejGa38BckpM_5SFqEtfa89i5O7eZySD0ZVFZzUmwi-51STwFPngPnoXQPZPU5d3hzbBJET2tCRC5LXcaXxriinbKjCRxDuhxd9o2D4bD6n6RDQkvQNTJe1d6vLg84wEElP0sgqYjZFEVYlUMkL82r3gy5hVDINklJn3IxsCDM6QRA56AGeVCTh-5WB--gAwTw6Dz9SGEFzrMmHEimLcozWf5zd9pGx5SvKkW2I7Mkq4QmoxuaU80btFHdwaO3DLqYAAhgpzIuh_LQIOvQFrMxMUqr5ytqjNVxxIkVUGI8Kbd_nwpSN_QNV0LQQ2yONaWmstF62fDT2wBkaJLwH5ch_mBlliSMGcUgsM_dQ704f8_qjvcyS3gkYLm8sjtcXjvK9HQRy-pqqc1FWGTo5uXG5i4UEpgeG_rYeqSUcAVHcNdxVeliHXPWbwN9ox2SEa9xK-OgopnGu57c03FPaoRGOO_afW-0lrppzSpehGRrPEdRr3erm8jkVJWEBLItc0kMYSoE8QI6hY38l22viCNHhVhSW9-me2FOFmXKNI-06V6VVTxdVuGxFQz5YegXPtcrI83IDOWmI-6m1hBgCNC9Hs9XsuGY6hC5o56E"
+    uri: image[0].baseUrl
   };
+  console.log(image[0].baseUrl);
   return (
     <View style={styles.container}>
       <ScrollView
@@ -172,11 +183,6 @@ export default function HomeScreen() {
         </View> */}
 
         <View style={styles.helpContainer}>
-          <TextInput
-            style={{ height: 40, borderColor: "gray", borderWidth: 1 }}
-            onChangeText={text => onChangeText(text)}
-            value={value}
-          />
           <TouchableOpacity onPress={handleHelpPress} style={styles.helpLink}>
             <Text style={styles.helpLinkText}>
               Help, it didn’t automatically reload!
@@ -184,15 +190,15 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <View style={styles.button}>
             <Button
-              title="save"
+              title="Retrieve Photo"
               color="#f194ff"
               onPress={() => getAPI()}
             ></Button>
             <View style={{ paddingTop: 10 }}>
               <Button
-                title="Read"
+                title="Next Photo"
                 color="#f194ff"
-                onPress={() => getData()}
+                onPress={() => getNextBatch()}
               ></Button>
             </View>
             <View style={{ paddingTop: 10 }}>
