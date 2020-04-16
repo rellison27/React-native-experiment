@@ -1,35 +1,9 @@
-import * as WebBrowser from "expo-web-browser";
 import * as React from "react";
-import {
-  Image,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Button,
-  Alert,
-  TextInput
-} from "react-native";
+import { Image, Platform, StyleSheet, View, Button } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import { MonoText } from "../components/StyledText";
-
 import * as Google from "expo-google-app-auth";
 import { AsyncStorage } from "react-native";
-
-// // First- obtain access token from Expo's Google API
-// const { type, accessToken, user } = await Google.logInAsync(config);
-
-// if (type === 'success') {
-//   // Then you can use the Google REST API
-// let userInfoResponse = await fetch(
-//   "https://www.googleapis.com/userinfo/v2/me",
-//   {
-//     headers: { Authorization: `Bearer ${accessToken}` }
-//   }
-// );
-// }
-
+// TODO: we could use the rest of these ClientId's
 // const config = {
 //   expoClientId: `<YOUR_WEB_CLIENT_ID>`,
 //   iosClientId: `<YOUR_IOS_CLIENT_ID>`,
@@ -37,19 +11,13 @@ import { AsyncStorage } from "react-native";
 //   iosStandaloneAppClientId: `<YOUR_IOS_CLIENT_ID>`,
 //   androidStandaloneAppClientId: `<YOUR_ANDROID_CLIENT_ID>`,
 // };
-// const { type, accessToken } = await Google.logInAsync(config);
 
-// if (type === 'success') {
-//   /* Log-Out */
-//   await Google.logOutAsync({ accessToken, ...config });
-//   /* `accessToken` is now invalid and cannot be used to get data from the Google API with HTTP requests */
-// }
 export default function HomeScreen() {
   const [image, onImageSrc] = React.useState(" ");
   const signInWithGoogleAsync = async () => {
     try {
       const result = await Google.logInAsync({
-        //clientId I created for this demo we will also need one for iOS and maybe web
+        //clientId - I created for this demo we will also need one for iOS and maybe web
         androidClientId:
           "316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com",
         scopes: [
@@ -79,12 +47,33 @@ export default function HomeScreen() {
     }
   };
 
+  const refreshAccess = async () => {
+    const refreshToken = await AsyncStorage.getItem("@refresh_Token");
+    fetch(
+      `https://oauth2.googleapis.com/token?client_id=316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com&refresh_token=${refreshToken}&grant_type=refresh_token`,
+      {
+        method: "POST"
+      }
+    )
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Sign In Again");
+        }
+        return response.json();
+      })
+      .then(async data => {
+        await AsyncStorage.setItem("@access_Token", data.access_token);
+        getAPI();
+      });
+  };
+
   const getAPI = async () => {
     const accessToken = await AsyncStorage.getItem("@access_Token");
     // get one photo via pageSize query param
     fetch(`https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=1`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     })
+      // TODO: will need a call to drive after saving our info
       // fetch(
       //   "https://www.googleapis.com/drive/v2/files/1tc24qyh-ci_zEmSD10DBBMewCs0aPw1L",
       //   {
@@ -107,26 +96,6 @@ export default function HomeScreen() {
       });
   };
 
-  const refreshAccess = async () => {
-    const refreshToken = await AsyncStorage.getItem("@refresh_Token");
-    fetch(
-      `https://oauth2.googleapis.com/token?client_id=316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com&refresh_token=${refreshToken}&grant_type=refresh_token`,
-      {
-        method: "POST"
-      }
-    )
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("Sign In Again");
-        }
-        return response.json();
-      })
-      .then(async data => {
-        await AsyncStorage.setItem("@access_Token", data.access_token);
-        getAPI();
-      });
-  };
-
   const getNextBatch = async () => {
     const accessToken = await AsyncStorage.getItem("@access_Token");
     const nextPageToken = await AsyncStorage.getItem("@next_Page_Token");
@@ -146,7 +115,6 @@ export default function HomeScreen() {
         onImageSrc(data.mediaItems.filter(value => value.mediaMetadata.photo));
       });
   };
-  const [value, onChangeText] = React.useState("Useless Placeholder");
   let Image_Http_URL = {
     uri: image[0].baseUrl
   };
@@ -162,33 +130,15 @@ export default function HomeScreen() {
           <Image source={Image_Http_URL} style={styles.welcomeImage} />
           {/* )} */}
         </View>
-
-        {/* <View style={styles.getStartedContainer}>
-          <DevelopmentModeNotice />
-
-          <Text style={styles.getStartedText}>
-            Open up the code for this screen:
-          </Text>
-
-          <View
-            style={[styles.codeHighlightContainer, styles.homeScreenFilename]}
-          >
-            <MonoText>screens/HomeScreen.js</MonoText>
-          </View>
-
-          <Text style={styles.getStartedText}>
-            Change any of the text, save the file, and your app will
-            automatically reload.
-          </Text>
-        </View> */}
-
         <View style={styles.helpContainer}>
-          <TouchableOpacity onPress={handleHelpPress} style={styles.helpLink}>
-            <Text style={styles.helpLinkText}>
-              Help, it didn’t automatically reload!
-            </Text>
-          </TouchableOpacity>
           <View style={styles.button}>
+            <View style={{ paddingBottom: 10 }}>
+              <Button
+                title="Sign In"
+                color="#f194ff"
+                onPress={() => signInWithGoogleAsync()}
+              ></Button>
+            </View>
             <Button
               title="Retrieve Photo"
               color="#f194ff"
@@ -201,30 +151,9 @@ export default function HomeScreen() {
                 onPress={() => getNextBatch()}
               ></Button>
             </View>
-            <View style={{ paddingTop: 10 }}>
-              <Button
-                title="Sign In"
-                color="#f194ff"
-                onPress={() => signInWithGoogleAsync()}
-              ></Button>
-            </View>
           </View>
         </View>
       </ScrollView>
-
-      <View style={styles.tabBarInfoContainer}>
-        <Text style={styles.tabBarInfoText}>
-          This is a tab bar. You can edit it in:
-        </Text>
-
-        <View
-          style={[styles.codeHighlightContainer, styles.navigationFilename]}
-        >
-          <MonoText style={styles.codeHighlightText}>
-            navigation/BottomTabNavigator.js
-          </MonoText>
-        </View>
-      </View>
     </View>
   );
 }
@@ -232,41 +161,6 @@ export default function HomeScreen() {
 HomeScreen.navigationOptions = {
   header: null
 };
-
-function DevelopmentModeNotice() {
-  if (__DEV__) {
-    const learnMoreButton = (
-      <Text onPress={handleLearnMorePress} style={styles.helpLinkText}>
-        Learn more
-      </Text>
-    );
-
-    return (
-      <Text style={styles.developmentModeText}>
-        Development mode is enabled: your app will be slower but you can use
-        useful development tools. {learnMoreButton}
-      </Text>
-    );
-  } else {
-    return (
-      <Text style={styles.developmentModeText}>
-        You are not in development mode: your app will run at full speed.
-      </Text>
-    );
-  }
-}
-
-function handleLearnMorePress() {
-  WebBrowser.openBrowserAsync(
-    "https://docs.expo.io/versions/latest/workflow/development-mode/"
-  );
-}
-
-function handleHelpPress() {
-  WebBrowser.openBrowserAsync(
-    "https://docs.expo.io/versions/latest/get-started/create-a-new-app/#making-your-first-change"
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -289,9 +183,9 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   welcomeImage: {
-    width: 100,
-    height: 132,
-    resizeMode: "contain",
+    width: 150,
+    height: 150,
+    // resizeMode: "contain",
     marginTop: 3,
     marginLeft: -10
   },
