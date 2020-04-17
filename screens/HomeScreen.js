@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Image, Platform, StyleSheet, View, Button } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import * as Google from "expo-google-app-auth";
 import { AsyncStorage } from "react-native";
 // TODO: we could use the rest of these ClientId's
 // const config = {
@@ -11,7 +10,7 @@ import { AsyncStorage } from "react-native";
 //   iosStandaloneAppClientId: `<YOUR_IOS_CLIENT_ID>`,
 //   androidStandaloneAppClientId: `<YOUR_ANDROID_CLIENT_ID>`,
 // };
-
+import * as Google from "expo-google-app-auth";
 export default function HomeScreen() {
   const [image, onImageSrc] = React.useState(" ");
   const signInWithGoogleAsync = async () => {
@@ -20,6 +19,10 @@ export default function HomeScreen() {
         //clientId - I created for this demo we will also need one for iOS and maybe web
         androidClientId:
           "316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com",
+        iosClientId:
+          "316292294133-u4ee3q3dhh3lofeuqpk7dslnqgm3u2hq.apps.googleusercontent.com",
+        expoClientId:
+          "316292294133-6080ebpjivneq4cuoclvl2lncbi6gsno.apps.googleusercontent.com",
         scopes: [
           "profile",
           "email",
