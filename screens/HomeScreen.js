@@ -2,6 +2,7 @@ import * as React from "react";
 import { Image, Platform, StyleSheet, View, Button } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { AsyncStorage } from "react-native";
+import GoogleSignIn from "../components/GoogleSignIn";
 // TODO: we could use the rest of these ClientId's
 // const config = {
 //   expoClientId: `<YOUR_WEB_CLIENT_ID>`,
@@ -10,44 +11,13 @@ import { AsyncStorage } from "react-native";
 //   iosStandaloneAppClientId: `<YOUR_IOS_CLIENT_ID>`,
 //   androidStandaloneAppClientId: `<YOUR_ANDROID_CLIENT_ID>`,
 // };
-import * as Google from "expo-google-app-auth";
 export default function HomeScreen() {
   const [image, onImageSrc] = React.useState(" ");
-  const signInWithGoogleAsync = async () => {
-    try {
-      const result = await Google.logInAsync({
-        //clientId - I created for this demo we will also need one for iOS and maybe web
-        androidClientId:
-          "316292294133-l6qn65nev8f8iu3urat9siiktoulkv9g.apps.googleusercontent.com",
-        iosClientId:
-          "316292294133-u4ee3q3dhh3lofeuqpk7dslnqgm3u2hq.apps.googleusercontent.com",
-        expoClientId:
-          "316292294133-6080ebpjivneq4cuoclvl2lncbi6gsno.apps.googleusercontent.com",
-        scopes: [
-          "profile",
-          "email",
-          "https://www.googleapis.com/auth/drive",
-          "https://www.googleapis.com/auth/drive.appdata",
-          "https://www.googleapis.com/auth/drive.file",
-          "https://www.googleapis.com/auth/drive.metadata",
-          "https://www.googleapis.com/auth/drive.metadata.readonly",
-          "https://www.googleapis.com/auth/drive.photos.readonly",
-          "https://www.googleapis.com/auth/drive.readonly",
-          "https://www.googleapis.com/auth/photoslibrary"
-        ]
-      });
-      if (result.type === "success") {
-        //store to local storage to make more api calls w/o forcing user to sign in again
-        return await AsyncStorage.multiSet([
-          ["@access_Token", result.accessToken],
-          ["@refresh_Token", result.refreshToken]
-        ]);
-      } else {
-        return { cancelled: true };
-      }
-    } catch (e) {
-      return { error: true };
-    }
+  const saveResult = async (accessToken, refreshToken) => {
+    AsyncStorage.multiSet([
+      ["@access_Token", accessToken],
+      ["@refresh_Token", refreshToken]
+    ]);
   };
 
   const refreshAccess = async () => {
@@ -136,11 +106,7 @@ export default function HomeScreen() {
         <View style={styles.helpContainer}>
           <View style={styles.button}>
             <View style={{ paddingBottom: 10 }}>
-              <Button
-                title="Sign In"
-                color="#f194ff"
-                onPress={() => signInWithGoogleAsync()}
-              ></Button>
+              <GoogleSignIn saveResult={() => saveResult()} />
             </View>
             <Button
               title="Retrieve Photo"
